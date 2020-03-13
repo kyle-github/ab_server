@@ -6,6 +6,7 @@ enable_testing()
 
 add_executable(ab_server "src/main.c"
                          "src/slice.h"
+                         "src/tcp_server.h"
 )
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
