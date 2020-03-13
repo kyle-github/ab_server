@@ -23,11 +23,17 @@
 #include <stdbool.h>
 #include "slice.h"
 
+typedef enum {
+    TCP_SERVER_OK = 1,
+    TCP_SERVER_INCOMPLETE = -1,
+} tcp_server_status_t;
+
 typedef struct {
     const char *host;
     uint16_t port;
     slice_s buffer;
-    slice_s (*handler)(slice_s buffer);
+    slice_s (*checker)(slice_s buffer);
+    slice_s (*handler)(slice_s input, slice_s output);
 } tcp_server_config_s;
 
 typedef struct tcp_server *tcp_server_p;

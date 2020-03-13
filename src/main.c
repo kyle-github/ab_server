@@ -4,7 +4,8 @@
 #include "tcp_server.h"
 
 
-static slice_s client_handler(slice_s buffer);
+static slice_s check_eip_packet(slice_s buffer);
+static slice_s request_handler(slice_s input, slice_s output);
 
 int main(int argc, const char **argv)
 {
@@ -15,7 +16,8 @@ int main(int argc, const char **argv)
         .host = "0.0.0.0",
         .port = 44818,
         .buffer = server_buf,
-        .handler = client_handler
+        .checker = check_eip_packet,
+        .handler = request_handler
     };
 
     server = tcp_server_create(&server_config);
@@ -28,8 +30,27 @@ int main(int argc, const char **argv)
 }
 
 
+/*
+ * check to see if we have a complete EIP packet. 
+ * 
+ * If we do not return an error slice with TCP_SERVER_INCOMPLETE
+ * as the status.
+ * 
+ * If we do have a complete packet, return the slice containing the
+ * entire packet.
+ */
 
-slice_s client_handler(slice_s buffer)
+slice_s check_eip_packet(slice_s buffer)
+{
+    return slice_make_err(-1);
+}
+
+/*
+ * Process each request.  Dispatch to the correct 
+ * request type handler.
+ */
+
+slice_s request_handler(slice_s input, slice_s output)
 {
     return slice_make_err(-1);
 }
