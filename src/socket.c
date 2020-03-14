@@ -18,7 +18,7 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-#ifdef WIN32
+#if defined(WIN32) || defined(_WIN32) || defined(_WIN64)
     #include <winsock2.h>
     #include <ws2tcpip.h>
 #else
@@ -124,7 +124,7 @@ int socket_open(const char *host, const char *port)
         rc = listen(sock, LISTEN_QUEUE);
         if(rc < 0) {
             info("ERROR: Unable to call listen() on socket: %s\n", gai_strerror(rc));
-            return SOCKET_ERR_BIND;
+            return SOCKET_ERR_LISTEN;
         }
 
         /* set up our socket to allow reuse if we crash suddenly. */
@@ -188,11 +188,19 @@ int socket_open(const char *host, const char *port)
 
 void socket_close(int sock)
 {
+    if(sock >= 0) {
 #ifdef WIN32
-    closesocket(sock);
+        closesocket(sock);
 #else
-    close(sock);
+        close(sock);
 #endif
+    }
+}
+
+
+int socket_accept(int sock)
+{
+    return accept(sock, NULL, NULL);
 }
 
 

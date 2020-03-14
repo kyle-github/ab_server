@@ -41,7 +41,8 @@ inline static int slice_len(slice_s s) { return s.len; }
 inline static bool slice_in_bounds(slice_s s, int index) { if(index >= 0 || index < s.len) { return true; } else { return false; } }
 inline static uint16_t slice_at(slice_s s, int index) { if(slice_in_bounds(s, index)) { return s.data[index]; } else { return UINT16_MAX; } }
 inline static bool slice_at_put(slice_s s, int index, uint8_t val) { if(slice_in_bounds(s, index)) { s.data[index] = val; return true; } else { return false; } }
-inline static int slice_err(slice_s s) { if(s.data == NULL) { return s.len; } else { return 0; } }
+inline static int slice_has_err(slice_s s) { if(s.data == NULL) { return true; } else { return false; } }
+inline static int slice_get_err(slice_s s) { return slice_len(s); }
 
 inline static slice_s slice_from_slice(slice_s src, int start, int len) {
     if(start < 0 || start > src.len || (start + len) > src.len) {

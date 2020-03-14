@@ -25,11 +25,17 @@
 typedef enum {
     SOCKET_ERR_STARTUP = -1,
     SOCKET_ERR_OPEN = -2,
-    
+    SOCKET_ERR_CREATE = -3,
+    SOCKET_ERR_BIND = -4,
+    SOCKET_ERR_LISTEN = -5,
+    SOCKET_ERR_SETOPT = -6,
+    SOCKET_ERR_READ = -7,
+    SOCKET_ERR_WRITE = -8
 } socket_err_t;
 
 extern int socket_open(const char *host, const char *port);
 extern void socket_close(int sock);
+extern int socket_accept(int sock);
 extern slice_s socket_read(int sock, slice_s in_buf);
 extern int socket_write(int sock, slice_s out_buf);
 
