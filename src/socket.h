@@ -20,23 +20,16 @@
 
 #pragma once
 
-#include <stdbool.h>
 #include "slice.h"
 
 typedef enum {
-    TCP_SERVER_INCOMPLETE,
-} tcp_server_status_t;
+    SOCKET_ERR_STARTUP = -1,
+    SOCKET_ERR_OPEN = -2,
+    
+} socket_err_t;
 
-typedef struct {
-    const char *host;
-    uint16_t port;
-    slice_s buffer;
-    slice_s (*handler)(slice_s input, slice_s output);
-} tcp_server_config_s;
-
-typedef struct tcp_server *tcp_server_p;
-
-extern tcp_server_p tcp_server_create(tcp_server_config_s *config);
-extern void tcp_server_start(tcp_server_p server);
-extern void tcp_server_destroy(tcp_server_p server);
+extern int socket_open(const char *host, const char *port);
+extern void socket_close(int sock);
+extern slice_s socket_read(int sock, slice_s in_buf);
+extern int socket_write(int sock, slice_s out_buf);
 

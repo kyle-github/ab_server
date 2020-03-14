@@ -4,7 +4,9 @@
 #include "tcp_server.h"
 
 
-static slice_s check_eip_packet(slice_s buffer);
+/* EIP header size is 24 bytes. */
+#define EIP_HEADER_SIZE (24)
+
 static slice_s request_handler(slice_s input, slice_s output);
 
 int main(int argc, const char **argv)
@@ -16,7 +18,6 @@ int main(int argc, const char **argv)
         .host = "0.0.0.0",
         .port = 44818,
         .buffer = server_buf,
-        .checker = check_eip_packet,
         .handler = request_handler
     };
 
@@ -30,20 +31,6 @@ int main(int argc, const char **argv)
 }
 
 
-/*
- * check to see if we have a complete EIP packet. 
- * 
- * If we do not return an error slice with TCP_SERVER_INCOMPLETE
- * as the status.
- * 
- * If we do have a complete packet, return the slice containing the
- * entire packet.
- */
-
-slice_s check_eip_packet(slice_s buffer)
-{
-    return slice_make_err(-1);
-}
 
 /*
  * Process each request.  Dispatch to the correct 
@@ -52,5 +39,15 @@ slice_s check_eip_packet(slice_s buffer)
 
 slice_s request_handler(slice_s input, slice_s output)
 {
-    return slice_make_err(-1);
+    /* check to see if we have a full packet. */
+    if(slice_len(input) >= EIP_HEADER_SIZE) {
+        uint16_t eip_len = get_uint16_le(input, 2);
+
+        if(slice_len(input) >= (EIP_HEADER_SIZE + eip_len)) {
+            return eip_dispatch_request(input, output);
+        } 
+    } 
+    
+    /* we do not have a complete packet, get more data. */
+    return slice_make_err(TCP_SERVER_INCOMPLETE);
 }

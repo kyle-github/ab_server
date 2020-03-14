@@ -37,6 +37,7 @@ typedef struct {
 
 inline static slice_s slice_make(uint8_t *data, int len) { return (slice_s){ .len = len, .data = data }; }
 inline static slice_s slice_make_err(int err) { return slice_make(NULL, err); }
+inline static int slice_len(slice_s s) { return s.len; }
 inline static bool slice_in_bounds(slice_s s, int index) { if(index >= 0 || index < s.len) { return true; } else { return false; } }
 inline static uint16_t slice_at(slice_s s, int index) { if(slice_in_bounds(s, index)) { return s.data[index]; } else { return UINT16_MAX; } }
 inline static bool slice_at_put(slice_s s, int index, uint8_t val) { if(slice_in_bounds(s, index)) { s.data[index] = val; return true; } else { return false; } }
