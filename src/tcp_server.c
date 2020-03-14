@@ -28,11 +28,12 @@
 struct tcp_server {
     int sock_fd;
     slice_s buffer;
-    slice_s (*handler)(slice_s input, slice_s output);
+    slice_s (*handler)(slice_s input, slice_s output, void *context);
+    void *context;
 };
 
 
-tcp_server_p tcp_server_create(const char *host, const char *port, slice_s buffer, slice_s (*handler)(slice_s input, slice_s output), void *context)
+tcp_server_p tcp_server_create(const char *host, const char *port, slice_s buffer, slice_s (*handler)(slice_s input, slice_s output, void *context), void *context)
 {
     tcp_server_p server = calloc(1, sizeof(*server));
 
@@ -46,6 +47,7 @@ tcp_server_p tcp_server_create(const char *host, const char *port, slice_s buffe
 
         server->buffer = buffer;
         server->handler = handler;
+        server->context = context;
     }
 
     return server;
@@ -78,7 +80,7 @@ void tcp_server_start(tcp_server_p server)
                 }
 
                 /* try to process the packet. */
-                tmp_output = server->handler(tmp_input, server->buffer);
+                tmp_output = server->handler(tmp_input, server->buffer, server->context);
 
                 /* check the response. */
                 if(!slice_has_err(tmp_output)) {

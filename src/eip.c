@@ -18,21 +18,12 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-#pragma once
-
-#include <stdbool.h>
+#include "eip.h"
 #include "slice.h"
+#include "tcp_server.h"
+#include "utils.h"
 
-typedef enum {
-    TCP_SERVER_INCOMPLETE,
-    TCP_SERVER_PROCESSED,
-    TCP_SERVER_DONE,
-    TCP_SERVER_UNSUPPORTED
-} tcp_server_status_t;
-
-typedef struct tcp_server *tcp_server_p;
-
-extern tcp_server_p tcp_server_create(const char *host, const char *port, slice_s buffer, slice_s (*handler)(slice_s input, slice_s output, void *context), void *context);
-extern void tcp_server_start(tcp_server_p server);
-extern void tcp_server_destroy(tcp_server_p server);
-
+slice_s eip_dispatch_request(slice_s input, slice_s output)
+{
+    return slice_make_err(TCP_SERVER_UNSUPPORTED);
+}

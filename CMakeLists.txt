@@ -5,6 +5,7 @@ project(ab_server VERSION 0.1.0)
 #enable_testing()
 
 add_executable(ab_server "src/eip.h"
+                         "src/eip.c"
                          "src/main.c"
                          "src/slice.h"
                          "src/socket.c"
