@@ -4,7 +4,11 @@ project(ab_server VERSION 0.1.0)
 #include(CTest)
 #enable_testing()
 
-add_executable(ab_server "src/eip.h"
+add_executable(ab_server 
+                         "src/context.h"
+                         "src/cpf.h"
+                         "src/cpf.c"
+                         "src/eip.h"
                          "src/eip.c"
                          "src/main.c"
                          "src/slice.h"

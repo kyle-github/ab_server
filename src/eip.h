@@ -20,6 +20,10 @@
 
 #pragma once
 
+#include "context.h"
 #include "slice.h"
 
-extern slice_s eip_dispatch_request(slice_s input, slice_s output);
+/* EIP header size is 24 bytes. */
+#define EIP_HEADER_SIZE (24)
+
+extern slice_s eip_dispatch_request(slice_s input, slice_s output, context_s *context);

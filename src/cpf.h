@@ -18,60 +18,10 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+#pragma once
+
 #include "context.h"
-#include "eip.h"
 #include "slice.h"
-#include "tcp_server.h"
 
-
-static slice_s request_handler(slice_s input, slice_s output, void *context);
-
-int main(int argc, const char **argv)
-{
-    tcp_server_p server = NULL;
-    uint8_t buf[4200];  /* CIP only allows 4002 for the CIP request, but there is overhead. */
-    slice_s server_buf = slice_make(buf, sizeof(buf));
-    context_s context;
-
-    /* clear out context to make sure we do not get gremlins */
-    memset(&context, 0, sizeof(context));
-
-    /* set the random seed. */
-    srand(time(NULL));
-
-    /* open a server connection and listen on the right port. */
-    server = tcp_server_create("0.0.0.0", "44818", server_buf, request_handler, NULL);
-
-    tcp_server_start(server);
-
-    tcp_server_destroy(server);
-
-    return 0;
-}
-
-
-
-/*
- * Process each request.  Dispatch to the correct 
- * request type handler.
- */
-
-slice_s request_handler(slice_s input, slice_s output, void *context)
-{
-    /* check to see if we have a full packet. */
-    if(slice_len(input) >= EIP_HEADER_SIZE) {
-        uint16_t eip_len = get_uint16_le(input, 2);
-
-        if(slice_len(input) >= (EIP_HEADER_SIZE + eip_len)) {
-            return eip_dispatch_request(input, output, (context_s *)context);
-        } 
-    } 
-    
-    /* we do not have a complete packet, get more data. */
-    return slice_make_err(TCP_SERVER_INCOMPLETE);
-}
+extern slice_s handle_cpf_unconnected(slice_s input, slice_s output, context_s *context);
+extern slice_s handle_cpf_connected(slice_s input, slice_s output, context_s *context);
