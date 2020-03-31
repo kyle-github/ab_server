@@ -34,8 +34,6 @@
 /* supported EIP version */
 #define EIP_VERSION     ((uint16_t)1)
 
-/* EIP errors. */
-#define EIP_ERR_BAD_REQUEST     ((uint32_t)1) /* FIXME */
 
 
 typedef struct {
@@ -84,11 +82,15 @@ slice_s eip_dispatch_request(slice_s input, slice_s output, context_s *context)
             break;
 
         case EIP_UNCONNECTED_SEND:
-            response = handle_cpf_unconnected(input, output, context);
+            response = handle_cpf_unconnected(slice_from_slice(input, EIP_HEADER_SIZE, slice_len(input) - EIP_HEADER_SIZE), 
+                                              slice_from_slice(output, EIP_HEADER_SIZE, slice_len(output) - EIP_HEADER_SIZE), 
+                                              context);
             break;
 
         case EIP_CONNECTED_SEND:
-            response = handle_cpf_connected(input, output, context);
+            response = handle_cpf_connected(slice_from_slice(input, EIP_HEADER_SIZE, slice_len(input) - EIP_HEADER_SIZE), 
+                                            slice_from_slice(output, EIP_HEADER_SIZE, slice_len(output) - EIP_HEADER_SIZE), 
+                                            context);
             break;
 
         default:
