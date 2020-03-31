@@ -5,6 +5,8 @@ project(ab_server VERSION 0.1.0)
 #enable_testing()
 
 add_executable(ab_server 
+                         "src/cip.h"
+                         "src/cip.c"
                          "src/context.h"
                          "src/cpf.h"
                          "src/cpf.c"
