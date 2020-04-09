@@ -27,4 +27,8 @@
 typedef struct {
     uint32_t session_handle;
     uint64_t sender_context;
+    uint32_t server_connection_id;
+    uint16_t server_connection_seq;
+    uint32_t client_connection_id;
+    uint16_t client_connection_seq;
 } context_s;
