@@ -22,9 +22,44 @@
 
 #include <stdint.h>
 
-/* Define the context that is passed around. */
 
+typedef uint16_t tag_type_t;
+
+#define TAG_TYPE_SINT        ((tag_type_t)0xC200) /* Signed 8–bit integer value */
+#define TAG_TYPE_INT         ((tag_type_t)0xC300) /* Signed 16–bit integer value */
+#define TAG_TYPE_DINT        ((tag_type_t)0xC400) /* Signed 32–bit integer value */
+#define TAG_TYPE_LINT        ((tag_type_t)0xC500) /* Signed 64–bit integer value */
+#define TAG_TYPE_USINT       ((tag_type_t)0xC600) /* Unsigned 8–bit integer value */
+#define TAG_TYPE_UINT        ((tag_type_t)0xC700) /* Unsigned 16–bit integer value */
+#define TAG_TYPE_UDINT       ((tag_type_t)0xC800) /* Unsigned 32–bit integer value */
+#define TAG_TYPE_ULINT       ((tag_type_t)0xC900) /* Unsigned 64–bit integer value */
+#define TAG_TYPE_REAL        ((tag_type_t)0xCA00) /* 32–bit floating point value, IEEE format */
+#define TAG_TYPE_LREAL       ((tag_type_t)0xCB00) /* 64–bit floating point value, IEEE format */
+
+struct tag_def_s {
+    struct tag_def_s *next_tag;
+    char *name;
+    tag_type_t tag_type;
+    int elem_size;
+    int elem_count;
+    int dimensions[3];
+    uint8_t *data;
+};
+
+typedef struct tag_def_s tag_def_s;
+
+typedef enum {
+    PLC_CONTROL_LOGIX,
+    PLC_MICRO800
+} plc_type_t;
+
+/* Define the context that is passed around. */
 typedef struct {
+    plc_type_t plc_type;
+    int path[2];
+    struct tag_def_s *tags;
+
+    /* connection info. */
     uint32_t session_handle;
     uint64_t sender_context;
     uint32_t server_connection_id;
