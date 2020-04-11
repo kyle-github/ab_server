@@ -27,6 +27,10 @@ extern int util_sleep_ms(int ms);
 extern int64_t util_time_ms(void);
 
 /* debug helpers */
-extern void error(const char *templ, ...);
-extern void info(const char *templ, ...);
+void debug_on(void);
+void debug_off(void);
+#define error(...) error_impl(__func__, __LINE__, __VA_ARGS__)
+extern void error_impl(const char *func, int line, const char *templ, ...);
+#define info(...) info_impl(__func__, __LINE__, __VA_ARGS__)
+extern void info_impl(const char *func, int line, const char *templ, ...);
 extern void slice_dump(slice_s s);

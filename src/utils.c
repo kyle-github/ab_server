@@ -73,11 +73,27 @@ int64_t util_time_ms(void)
  * Logging routines.
  */
 
-void error(const char *templ, ...)
+static bool debug_is_on = false;
+
+
+void debug_on(void)
+{
+    debug_is_on = true;
+}
+
+void debug_off(void)
+{
+    debug_is_on = false;
+}
+
+
+
+void error_impl(const char *func, int line, const char *templ, ...)
 {
     va_list va;
 
     /* print it out. */
+    fprintf(stderr, "ERROR %s:%d ", func, line);
     va_start(va,templ);
     vfprintf(stderr,templ,va);
     va_end(va);
@@ -88,11 +104,16 @@ void error(const char *templ, ...)
 
 
 
-void info(const char *templ, ...)
+void info_impl(const char *func, int line, const char *templ, ...)
 {
     va_list va;
 
+    if(!debug_is_on) {
+        return;
+    }
+
     /* print it out. */
+    fprintf(stderr, "INFO %s:%d ", func, line);
     va_start(va,templ);
     vfprintf(stderr,templ,va);
     va_end(va);
