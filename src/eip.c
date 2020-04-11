@@ -57,6 +57,9 @@ slice_s eip_dispatch_request(slice_s input, slice_s output, context_s *context)
 
     eip_header_s header;
 
+    info("eip_dispatch_request(): got packet:");
+    slice_dump(input);
+
     /* unpack header. */
     header.command = get_uint16_le(input, 0);
     header.length = get_uint16_le(input, 2);
@@ -70,7 +73,6 @@ slice_s eip_dispatch_request(slice_s input, slice_s output, context_s *context)
         info("Illegal EIP packet.   Length should be %d but is %d!", header.length + EIP_HEADER_SIZE, slice_len(input));
         return slice_make_err(TCP_SERVER_BAD_REQUEST);
     }
-
 
     /* dispatch the request */
     switch(header.command) {
