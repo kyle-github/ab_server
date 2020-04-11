@@ -23,33 +23,49 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <string.h>
+#include <sys/types.h> /* for ssize_t */
 
 
-typedef enum {
-    SLICE_OK,
-    SLICE_OUT_OF_BOUNDS,
-} slice_status_t;
+// typedef enum {
+//     SLICE_OK=0,
+//     SLICE_OUT_OF_BOUNDS=-1,
+// } slice_status_t;
 
 typedef struct {
-    int len;
+    ssize_t len;
     uint8_t *data;
 } slice_s;
 
-inline static slice_s slice_make(uint8_t *data, int len) { return (slice_s){ .len = len, .data = data }; }
-inline static slice_s slice_make_err(int err) { return slice_make(NULL, err); }
-inline static int slice_len(slice_s s) { return s.len; }
-inline static bool slice_in_bounds(slice_s s, int index) { if(index >= 0 || index < s.len) { return true; } else { return false; } }
-inline static uint16_t slice_at(slice_s s, int index) { if(slice_in_bounds(s, index)) { return s.data[index]; } else { return UINT16_MAX; } }
-inline static bool slice_at_put(slice_s s, int index, uint8_t val) { if(slice_in_bounds(s, index)) { s.data[index] = val; return true; } else { return false; } }
-inline static int slice_has_err(slice_s s) { if(s.data == NULL) { return true; } else { return false; } }
+inline static slice_s slice_make(uint8_t *data, ssize_t len) { return (slice_s){ .len = len, .data = data }; }
+inline static slice_s slice_make_err(ssize_t err) { return slice_make(NULL, err); }
+inline static ssize_t slice_len(slice_s s) { return s.len; }
+inline static bool slice_in_bounds(slice_s s, size_t index) { if(index < (size_t)s.len) { return true; } else { return false; } }
+inline static uint16_t slice_at(slice_s s, size_t index) { if(slice_in_bounds(s, index)) { return s.data[index]; } else { return UINT16_MAX; } }
+inline static bool slice_at_put(slice_s s, size_t index, uint8_t val) { if(slice_in_bounds(s, index)) { s.data[index] = val; return true; } else { return false; } }
+inline static bool slice_has_err(slice_s s) { if(s.data == NULL) { return true; } else { return false; } }
 inline static int slice_get_err(slice_s s) { return slice_len(s); }
+inline static bool slice_match_bytes(slice_s s, const uint8_t *data, size_t data_len) { for(size_t i=0; i < data_len; i++) { if(slice_at(s, (ssize_t)i) != data[i]) { return false;}} return true; }
+inline static bool slice_match_string(slice_s s, const char *data) { return slice_match_bytes(s, (const uint8_t*)data, strlen(data)); }
 
-inline static slice_s slice_from_slice(slice_s src, int start, int len) {
-    if(start < 0 || start > src.len || (start + len) > src.len) {
-        return slice_make_err(SLICE_OUT_OF_BOUNDS);
+inline static slice_s slice_from_slice(slice_s src, size_t start, size_t len) {
+    size_t actual_start;
+    ssize_t actual_len;
+
+    if(start > src.len) {
+        actual_start = src.len;
     } else {
-    return (slice_s){ .len = len, .data = &(src.data[start]) };
+        actual_start = start;
     }
+    
+    if(len > (src.len - actual_start)) {
+        /* truncate the slice to fit. */
+        actual_len = (src.len - actual_start);
+    } else {
+        actual_len = len;
+    }
+
+    return (slice_s){ .len = actual_len, .data = &(src.data[actual_start]) };
 }
 
 
