@@ -25,38 +25,38 @@
 #include <string.h>
 #include <strings.h>
 #include <time.h>
-#include "context.h"
 #include "eip.h"
+#include "plc.h"
 #include "slice.h"
 #include "tcp_server.h"
 #include "utils.h"
 
 
 static void usage(void);
-static void process_args(int argc, const char **argv, context_s *context);
-static void parse_path(const char *path, context_s *context);
-static void parse_tag(const char *tag, context_s *context);
-static slice_s request_handler(slice_s input, slice_s output, void *context);
+static void process_args(int argc, const char **argv, plc_s *plc);
+static void parse_path(const char *path, plc_s *plc);
+static void parse_tag(const char *tag, plc_s *plc);
+static slice_s request_handler(slice_s input, slice_s output, void *plc);
 
 int main(int argc, const char **argv)
 {
     tcp_server_p server = NULL;
     uint8_t buf[4200];  /* CIP only allows 4002 for the CIP request, but there is overhead. */
     slice_s server_buf = slice_make(buf, sizeof(buf));
-    context_s context;
+    plc_s plc;
 
     debug_off();
 
     /* clear out context to make sure we do not get gremlins */
-    memset(&context, 0, sizeof(context));
+    memset(&plc, 0, sizeof(plc));
 
     /* set the random seed. */
     srand(time(NULL));
 
-    process_args(argc, argv, &context);
+    process_args(argc, argv, &plc);
 
     /* open a server connection and listen on the right port. */
-    server = tcp_server_create("0.0.0.0", "44818", server_buf, request_handler, &context);
+    server = tcp_server_create("0.0.0.0", "44818", server_buf, request_handler, &plc);
 
     tcp_server_start(server);
 
@@ -89,7 +89,7 @@ void usage(void)
 }
 
 
-void process_args(int argc, const char **argv, context_s *context)
+void process_args(int argc, const char **argv, plc_s *plc)
 {
     bool has_path = false;
     bool needs_path = false;
@@ -105,12 +105,12 @@ void process_args(int argc, const char **argv, context_s *context)
 
             if(strcasecmp(&(argv[i][6]), "ControlLogix") == 0) {
                 fprintf(stderr, "Selecting ControlLogix simulator.\n");
-                context->plc_type = PLC_CONTROL_LOGIX;
+                plc->plc_type = PLC_CONTROL_LOGIX;
                 needs_path = true;
                 has_plc = true;
             } else if(strcasecmp(&(argv[i][6]), "Micro800") == 0) {
                 fprintf(stderr, "Selecting Micro8xx simulator.\n");
-                context->plc_type = PLC_MICRO800;
+                plc->plc_type = PLC_MICRO800;
                 needs_path = false;
                 has_plc = true;
             } else {
@@ -120,12 +120,12 @@ void process_args(int argc, const char **argv, context_s *context)
         }
 
         if(strncmp(argv[i],"--path=",7) == 0) {
-            parse_path(&(argv[i][7]), context);
+            parse_path(&(argv[i][7]), plc);
             has_path = true;
         }
 
         if(strncmp(argv[i],"--tag=",6) == 0) {
-            parse_tag(&(argv[i][6]), context);
+            parse_tag(&(argv[i][6]), plc);
             has_tag = true;
         }
 
@@ -153,12 +153,16 @@ void process_args(int argc, const char **argv, context_s *context)
 
 
 
-void parse_path(const char *path, context_s *context)
+void parse_path(const char *path_str, plc_s *plc)
 {
-    if(sscanf(path, "%d,%d", &(context->path[0]), &(context->path[1])) == 2) {
-        info("Processed path %d,%d.", context->path[0], context->path[1]);
+    int tmp_path[2];
+    if(sscanf(path_str, "%d,%d",&tmp_path[0], &tmp_path[1]) == 2) {
+        plc->path[0] = (uint8_t)tmp_path[0];
+        plc->path[1] = (uint8_t)tmp_path[1];
+        
+        info("Processed path %d,%d.", plc->path[0], plc->path[1]);
     } else {
-        fprintf(stderr, "Error processing path \"%s\"!  Path must be two numbers separated by a comma.\n", path);
+        fprintf(stderr, "Error processing path \"%s\"!  Path must be two numbers separated by a comma.\n", path_str);
         usage();
     }
 }
@@ -180,7 +184,7 @@ void parse_path(const char *path, context_s *context)
  * Array size field is one or more (up to 3) numbers separated by commas.
  */
 
-void parse_tag(const char *tag_str, context_s *context)
+void parse_tag(const char *tag_str, plc_s *plc)
 {
     tag_def_s *tag = calloc(1, sizeof(*tag));
     char *type_str = NULL;
@@ -276,8 +280,8 @@ void parse_tag(const char *tag_str, context_s *context)
     info("Processed \"%s\" into tag %s of type %x with dimensions (%d, %d, %d).", tag_str, tag->name, tag->tag_type, tag->dimensions[0], tag->dimensions[1], tag->dimensions[2]);
 
     /* add the tag to the list. */
-    tag->next_tag = context->tags;
-    context->tags = tag;
+    tag->next_tag = plc->tags;
+    plc->tags = tag;
 }
 
 /*
@@ -285,14 +289,14 @@ void parse_tag(const char *tag_str, context_s *context)
  * request type handler.
  */
 
-slice_s request_handler(slice_s input, slice_s output, void *context)
+slice_s request_handler(slice_s input, slice_s output, void *plc)
 {
     /* check to see if we have a full packet. */
     if(slice_len(input) >= EIP_HEADER_SIZE) {
         uint16_t eip_len = get_uint16_le(input, 2);
 
         if(slice_len(input) >= (EIP_HEADER_SIZE + eip_len)) {
-            return eip_dispatch_request(input, output, (context_s *)context);
+            return eip_dispatch_request(input, output, (plc_s *)plc);
         } 
     } 
     

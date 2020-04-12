@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include "context.h"
+#include "plc.h"
 #include "slice.h"
 
-extern slice_s handle_cpf_unconnected(slice_s input, slice_s output, context_s *context);
-extern slice_s handle_cpf_connected(slice_s input, slice_s output, context_s *context);
+extern slice_s handle_cpf_unconnected(slice_s input, slice_s output, plc_s *plc);
+extern slice_s handle_cpf_connected(slice_s input, slice_s output, plc_s *plc);

@@ -56,14 +56,21 @@ typedef enum {
 /* Define the context that is passed around. */
 typedef struct {
     plc_type_t plc_type;
-    int path[2];
-    struct tag_def_s *tags;
+    uint8_t path[2];
 
     /* connection info. */
     uint32_t session_handle;
     uint64_t sender_context;
     uint32_t server_connection_id;
     uint16_t server_connection_seq;
+    uint32_t server_to_client_rpi;
     uint32_t client_connection_id;
     uint16_t client_connection_seq;
-} context_s;
+    uint16_t client_connection_serial_number;
+    uint16_t client_vendor_id;
+    uint32_t client_serial_number;
+    uint32_t client_to_server_rpi;
+
+    /* list of tags served by this "PLC" */
+    struct tag_def_s *tags;
+} plc_s;

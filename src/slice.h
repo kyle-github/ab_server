@@ -26,6 +26,7 @@
 #include <string.h>
 #include <sys/types.h> /* for ssize_t */
 
+#include <stdio.h>
 
 // typedef enum {
 //     SLICE_OK=0,
@@ -45,7 +46,15 @@ inline static uint16_t slice_at(slice_s s, size_t index) { if(slice_in_bounds(s,
 inline static bool slice_at_put(slice_s s, size_t index, uint8_t val) { if(slice_in_bounds(s, index)) { s.data[index] = val; return true; } else { return false; } }
 inline static bool slice_has_err(slice_s s) { if(s.data == NULL) { return true; } else { return false; } }
 inline static int slice_get_err(slice_s s) { return slice_len(s); }
-inline static bool slice_match_bytes(slice_s s, const uint8_t *data, size_t data_len) { for(size_t i=0; i < data_len; i++) { if(slice_at(s, (ssize_t)i) != data[i]) { return false;}} return true; }
+inline static bool slice_match_bytes(slice_s s, const uint8_t *data, size_t data_len) { 
+    for(size_t i=0; i < data_len; i++) { 
+        //fprintf(stderr,"Comparing element %d, %x and %x\n", i, slice_at(s, (ssize_t)i), data[i]);
+        if(slice_at(s, (ssize_t)i) != data[i]) { 
+            return false;
+        }
+    } 
+    return true; 
+}
 inline static bool slice_match_string(slice_s s, const char *data) { return slice_match_bytes(s, (const uint8_t*)data, strlen(data)); }
 
 inline static slice_s slice_from_slice(slice_s src, size_t start, size_t len) {
