@@ -106,11 +106,25 @@ void process_args(int argc, const char **argv, plc_s *plc)
             if(strcasecmp(&(argv[i][6]), "ControlLogix") == 0) {
                 fprintf(stderr, "Selecting ControlLogix simulator.\n");
                 plc->plc_type = PLC_CONTROL_LOGIX;
+                plc->path[0] = (uint8_t)0x03;
+                plc->path[1] = (uint8_t)0x00; /* filled in later. */
+                plc->path[2] = (uint8_t)0x00; /* filled in later. */
+                plc->path[3] = (uint8_t)0x20;
+                plc->path[4] = (uint8_t)0x20;
+                plc->path[5] = (uint8_t)0x24;
+                plc->path[6] = (uint8_t)0x01;
+                plc->path_len = 7;
                 needs_path = true;
                 has_plc = true;
             } else if(strcasecmp(&(argv[i][6]), "Micro800") == 0) {
                 fprintf(stderr, "Selecting Micro8xx simulator.\n");
                 plc->plc_type = PLC_MICRO800;
+                plc->path[0] = (uint8_t)0x02;
+                plc->path[1] = (uint8_t)0x20;
+                plc->path[2] = (uint8_t)0x20;
+                plc->path[3] = (uint8_t)0x24;
+                plc->path[4] = (uint8_t)0x01;
+                plc->path_len = 5;
                 needs_path = false;
                 has_plc = true;
             } else {
@@ -157,10 +171,10 @@ void parse_path(const char *path_str, plc_s *plc)
 {
     int tmp_path[2];
     if(sscanf(path_str, "%d,%d",&tmp_path[0], &tmp_path[1]) == 2) {
-        plc->path[0] = (uint8_t)tmp_path[0];
-        plc->path[1] = (uint8_t)tmp_path[1];
+        plc->path[1] = (uint8_t)tmp_path[0];
+        plc->path[2] = (uint8_t)tmp_path[1];
         
-        info("Processed path %d,%d.", plc->path[0], plc->path[1]);
+        info("Processed path %d,%d.", plc->path[1], plc->path[2]);
     } else {
         fprintf(stderr, "Error processing path \"%s\"!  Path must be two numbers separated by a comma.\n", path_str);
         usage();

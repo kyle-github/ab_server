@@ -45,7 +45,8 @@ const uint8_t CIP_LIST_TAGS[] = { 0x55, 0x02, 0x20, 0x02, 0x24, 0x01 };
 const uint8_t CIP_FORWARD_OPEN_EX[] = { 0x5B, 0x02, 0x20, 0x06, 0x24, 0x01 };
 
 /* path to match. */
-uint8_t PLC_CONN_PATH[] = { 0x03, 0x00, 0x00, 0x20, 0x02, 0x24, 0x01 };
+// uint8_t LOGIX_CONN_PATH[] = { 0x03, 0x00, 0x00, 0x20, 0x02, 0x24, 0x01 };
+// uint8_t MICRO800_CONN_PATH[] = { 0x02, 0x20, 0x02, 0x24, 0x01 };
 
 #define CIP_DONE               ((uint8_t)0x80)
 
@@ -71,6 +72,8 @@ slice_s cip_dispatch_request(slice_s input, slice_s output, plc_s *plc)
 
     /* match the prefix and dispatch. */
     if(slice_match_bytes(input, CIP_FORWARD_OPEN, sizeof(CIP_FORWARD_OPEN))) {
+        return handle_forward_open(input, output, plc);
+    } else if(slice_match_bytes(input, CIP_FORWARD_OPEN_EX, sizeof(CIP_FORWARD_OPEN_EX))) {
         return handle_forward_open(input, output, plc);
     } else {
             return make_cip_error(output, slice_at(input, 0) | CIP_DONE, CIP_ERR_UNSUPPORTED, false, 0);
@@ -103,7 +106,7 @@ typedef struct {
 
 slice_s handle_forward_open(slice_s input, slice_s output, plc_s *plc)
 {
-    slice_s result;
+    slice_s conn_path;
     size_t offset = 0;
     uint8_t fo_cmd = slice_at(input, 0);
     forward_open_s fo_req = {0};
@@ -153,18 +156,13 @@ slice_s handle_forward_open(slice_s input, slice_s output, plc_s *plc)
     }
 
     /* build the path to match. */
-    PLC_CONN_PATH[1] = plc->path[0];
-    PLC_CONN_PATH[2] = plc->path[1];
-
-    /* does the path match this PLC? */
-    info("Checking path, offset=%d, input length=%d", offset, slice_len(input));
-    ssize_t len = slice_len(input) - offset;
-    slice_s tmp_slice = slice_from_slice(input, offset, slice_len(input));
+    conn_path = slice_from_slice(input, offset, slice_len(input));
 
     info("path slice:");
-    slice_dump(tmp_slice);
+    slice_dump(conn_path);
 
-    if(!slice_match_bytes(slice_from_slice(input, offset, slice_len(input) - offset), &PLC_CONN_PATH[0], sizeof(PLC_CONN_PATH))) {
+    /* does the path match this PLC? */
+    if(!slice_match_bytes(conn_path, &plc->path[0], plc->path_len)) {
         /* FIXME - send back the right error. */
         info("Forward open request path did not match the path for this PLC!");
         return make_cip_error(output, slice_at(input, 0) | CIP_DONE, CIP_ERR_UNSUPPORTED, false, 0);
