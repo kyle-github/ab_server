@@ -25,16 +25,16 @@
 
 typedef uint16_t tag_type_t;
 
-#define TAG_TYPE_SINT        ((tag_type_t)0xC200) /* Signed 8–bit integer value */
-#define TAG_TYPE_INT         ((tag_type_t)0xC300) /* Signed 16–bit integer value */
-#define TAG_TYPE_DINT        ((tag_type_t)0xC400) /* Signed 32–bit integer value */
-#define TAG_TYPE_LINT        ((tag_type_t)0xC500) /* Signed 64–bit integer value */
-#define TAG_TYPE_USINT       ((tag_type_t)0xC600) /* Unsigned 8–bit integer value */
-#define TAG_TYPE_UINT        ((tag_type_t)0xC700) /* Unsigned 16–bit integer value */
-#define TAG_TYPE_UDINT       ((tag_type_t)0xC800) /* Unsigned 32–bit integer value */
-#define TAG_TYPE_ULINT       ((tag_type_t)0xC900) /* Unsigned 64–bit integer value */
-#define TAG_TYPE_REAL        ((tag_type_t)0xCA00) /* 32–bit floating point value, IEEE format */
-#define TAG_TYPE_LREAL       ((tag_type_t)0xCB00) /* 64–bit floating point value, IEEE format */
+#define TAG_TYPE_SINT        ((tag_type_t)0x00C2) /* Signed 8–bit integer value */
+#define TAG_TYPE_INT         ((tag_type_t)0x00C3) /* Signed 16–bit integer value */
+#define TAG_TYPE_DINT        ((tag_type_t)0x00C4) /* Signed 32–bit integer value */
+#define TAG_TYPE_LINT        ((tag_type_t)0x00C5) /* Signed 64–bit integer value */
+#define TAG_TYPE_USINT       ((tag_type_t)0x00C6) /* Unsigned 8–bit integer value */
+#define TAG_TYPE_UINT        ((tag_type_t)0x00C7) /* Unsigned 16–bit integer value */
+#define TAG_TYPE_UDINT       ((tag_type_t)0x00C8) /* Unsigned 32–bit integer value */
+#define TAG_TYPE_ULINT       ((tag_type_t)0x00C9) /* Unsigned 64–bit integer value */
+#define TAG_TYPE_REAL        ((tag_type_t)0x00CA) /* 32–bit floating point value, IEEE format */
+#define TAG_TYPE_LREAL       ((tag_type_t)0x00CB) /* 64–bit floating point value, IEEE format */
 
 struct tag_def_s {
     struct tag_def_s *next_tag;
@@ -42,6 +42,7 @@ struct tag_def_s {
     tag_type_t tag_type;
     int elem_size;
     int elem_count;
+    int num_dimensions;
     int dimensions[3];
     uint8_t *data;
 };
@@ -71,6 +72,9 @@ typedef struct {
     uint16_t client_vendor_id;
     uint32_t client_serial_number;
     uint32_t client_to_server_rpi;
+
+    uint32_t client_to_server_max_packet;
+    uint32_t server_to_client_max_packet;
 
     /* list of tags served by this "PLC" */
     struct tag_def_s *tags;

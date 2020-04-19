@@ -51,9 +51,10 @@ static slice_s register_session(slice_s input, slice_s output, plc_s *plc, eip_h
 static slice_s unregister_session(slice_s input, slice_s output, plc_s *plc, eip_header_s *header);
 
 
-slice_s eip_dispatch_request(slice_s input, slice_s output, plc_s *plc)
+slice_s eip_dispatch_request(slice_s input, slice_s raw_output, plc_s *plc)
 {
-    slice_s  response = slice_from_slice(output, EIP_HEADER_SIZE, slice_len(output) - EIP_HEADER_SIZE);
+    slice_s output = slice_from_slice(raw_output, 0, plc->server_to_client_max_packet);
+    slice_s response = slice_from_slice(output, EIP_HEADER_SIZE, slice_len(output) - EIP_HEADER_SIZE);
 
     eip_header_s header;
 
