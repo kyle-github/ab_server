@@ -28,11 +28,6 @@
 
 #include <stdio.h>
 
-// typedef enum {
-//     SLICE_OK=0,
-//     SLICE_OUT_OF_BOUNDS=-1,
-// } slice_status_t;
-
 typedef struct {
     ssize_t len;
     uint8_t *data;
@@ -47,9 +42,12 @@ inline static bool slice_at_put(slice_s s, size_t index, uint8_t val) { if(slice
 inline static bool slice_has_err(slice_s s) { if(s.data == NULL) { return true; } else { return false; } }
 inline static int slice_get_err(slice_s s) { return slice_len(s); }
 inline static bool slice_match_bytes(slice_s s, const uint8_t *data, size_t data_len) { 
-    if((ssize_t)data_len > slice_len(s)) { return false; }
+    if((ssize_t)data_len > slice_len(s)) { 
+        fprintf(stderr, "lengths do not match! Slice has length %d and bytes have length %d!\n", (int)slice_len(s), (int)data_len);
+        return false; 
+    }
     for(size_t i=0; i < data_len; i++) { 
-        //fprintf(stderr,"Comparing element %d, %x and %x\n", i, slice_at(s, (ssize_t)i), data[i]);
+        fprintf(stderr,"Comparing element %d, %x and %x\n", (int)i, (int)slice_at(s, (ssize_t)i), data[i]);
         if(slice_at(s, (ssize_t)i) != data[i]) { 
             return false;
         }

@@ -7,12 +7,12 @@ project(ab_server VERSION 0.1.0)
 add_executable(ab_server 
                          "src/cip.h"
                          "src/cip.c"
-                         "src/context.h"
                          "src/cpf.h"
                          "src/cpf.c"
                          "src/eip.h"
                          "src/eip.c"
                          "src/main.c"
+                         "src/plc.h"
                          "src/slice.h"
                          "src/socket.c"
                          "src/socket.h"

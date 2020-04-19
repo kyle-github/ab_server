@@ -30,10 +30,10 @@
 
 /* tag commands */
 const uint8_t CIP_MULTI[] = { 0x0A, 0x02, 0x20, 0x02, 0x24, 0x01 }; 
-const uint8_t CIP_READ[] = { 0x4C, 0x02, 0x20, 0x02, 0x24, 0x01 };
+const uint8_t CIP_READ[] = { 0x4C };
 const uint8_t CIP_WRITE[] = { 0x4D, 0x02, 0x20, 0x02, 0x24, 0x01 };
 const uint8_t CIP_RMW[] = { 0x4E, 0x02, 0x20, 0x02, 0x24, 0x01 };
-const uint8_t CIP_READ_FRAG[] = { 0x52, 0x02, 0x20, 0x02, 0x24, 0x01 };
+const uint8_t CIP_READ_FRAG[] = { 0x52 };
 const uint8_t CIP_WRITE_FRAG[] = { 0x53, 0x02, 0x20, 0x02, 0x24, 0x01 };
 
 
@@ -61,7 +61,10 @@ typedef struct {
 } cip_header_s;
 
 static slice_s handle_forward_open(slice_s input, slice_s output, plc_s *plc);
+static slice_s handle_forward_close(slice_s input, slice_s output, plc_s *plc);
+//static slice_s handle_read_request(slice_s input, slice_s output, plc_s *plc);
 static slice_s make_cip_error(slice_s output, uint8_t cip_cmd, uint8_t cip_err, bool extend, uint16_t extended_error);
+static bool match_path(slice_s input, bool need_pad, uint8_t *path, uint8_t path_len);
 
 slice_s cip_dispatch_request(slice_s input, slice_s output, plc_s *plc)
 {
@@ -75,6 +78,8 @@ slice_s cip_dispatch_request(slice_s input, slice_s output, plc_s *plc)
         return handle_forward_open(input, output, plc);
     } else if(slice_match_bytes(input, CIP_FORWARD_OPEN_EX, sizeof(CIP_FORWARD_OPEN_EX))) {
         return handle_forward_open(input, output, plc);
+    } else if(slice_match_bytes(input, CIP_FORWARD_CLOSE, sizeof(CIP_FORWARD_CLOSE))) {
+        return handle_forward_close(input, output, plc);
     } else {
             return make_cip_error(output, slice_at(input, 0) | CIP_DONE, CIP_ERR_UNSUPPORTED, false, 0);
     }
@@ -161,8 +166,7 @@ slice_s handle_forward_open(slice_s input, slice_s output, plc_s *plc)
     info("path slice:");
     slice_dump(conn_path);
 
-    /* does the path match this PLC? */
-    if(!slice_match_bytes(conn_path, &plc->path[0], plc->path_len)) {
+    if(!match_path(conn_path, ((offset & 0x01) ? false : true), &plc->path[0], plc->path_len)) {
         /* FIXME - send back the right error. */
         info("Forward open request path did not match the path for this PLC!");
         return make_cip_error(output, slice_at(input, 0) | CIP_DONE, CIP_ERR_UNSUPPORTED, false, 0);
@@ -198,6 +202,154 @@ slice_s handle_forward_open(slice_s input, slice_s output, plc_s *plc)
     slice_at_put(output, offset, 0); offset++;
 
     return slice_from_slice(output, 0, offset);        
+}
+
+
+/* Forward Close request. */
+typedef struct {
+    uint8_t secs_per_tick;          /* seconds per tick */
+    uint8_t timeout_ticks;          /* timeout = srd_secs_per_tick * src_timeout_ticks */
+    uint16_t client_connection_serial_number; /* our connection ID/serial number */
+    uint16_t client_vendor_id;      /* our unique vendor ID */
+    uint32_t client_serial_number;  /* our unique serial number */
+    slice_s path;                   /* path to PLC */
+} forward_close_s;
+
+/* the minimal Forward Open with no path */
+#define CIP_FORWARD_CLOSE_MIN_SIZE   (16)
+
+
+slice_s handle_forward_close(slice_s input, slice_s output, plc_s *plc)
+{
+    slice_s conn_path;
+    size_t offset = 0;
+    uint8_t fc_cmd = slice_at(input, 0);
+    forward_close_s fc_req = {0};
+
+    info("Checking Forward Close request:");
+    slice_dump(input);
+
+    /* minimum length check */
+    if(slice_len(input) < CIP_FORWARD_CLOSE_MIN_SIZE) {
+        /* FIXME - send back the right error. */
+        return make_cip_error(output, slice_at(input, 0) | CIP_DONE, CIP_ERR_UNSUPPORTED, false, 0);
+    }
+
+    /* get the data. */
+    offset = sizeof(CIP_FORWARD_CLOSE); /* step past the path to the CM */
+    fc_req.secs_per_tick = slice_at(input, offset); offset++;
+    fc_req.timeout_ticks = slice_at(input, offset); offset++;
+    fc_req.client_connection_serial_number = get_uint16_le(input, offset); offset += 2;
+    fc_req.client_vendor_id = get_uint16_le(input, offset); offset += 2;
+    fc_req.client_serial_number = get_uint32_le(input, offset); offset += 4;
+
+    /* check the remaining length */
+    if(offset >= slice_len(input)) {
+        /* FIXME - send back the right error. */
+        info("Forward close request size, %d, too small.   Should be greater than %d!", slice_len(input), offset);
+        return make_cip_error(output, slice_at(input, 0) | CIP_DONE, CIP_ERR_UNSUPPORTED, false, 0);
+    }
+
+    /*
+     * why does Rockwell do this?   The path here is _NOT_ a byte-for-byte copy of the path
+     * that was used to open the connection.  This one is padded with a zero byte after the path
+     * length.
+     */
+
+    /* build the path to match. */
+    conn_path = slice_from_slice(input, offset, slice_len(input));
+
+    if(!match_path(conn_path, ((offset & 0x01) ? false : true), plc->path, plc->path_len)) {
+        info("path does not match stored path!");
+        return make_cip_error(output, slice_at(input, 0) | CIP_DONE, CIP_ERR_UNSUPPORTED, false, 0);
+    }
+
+    // info("request path slice:");
+    // slice_dump(conn_path);
+
+    // /* does the path match this PLC? */
+    // if(!slice_match_bytes(conn_path, &plc->path[0], plc->path_len)) {
+    //     /* FIXME - send back the right error. */
+    //     info("Forward open request path did not match the path for this PLC!");
+    //     return make_cip_error(output, slice_at(input, 0) | CIP_DONE, CIP_ERR_UNSUPPORTED, false, 0);
+    // }
+
+    /* Check the values we got. */
+    if(plc->client_connection_serial_number != fc_req.client_connection_serial_number) {
+        /* FIXME - send back the right error. */
+        info("Forward close connection serial number, %x, did not match the connection serial number originally passed, %x!", fc_req.client_connection_serial_number, plc->client_connection_serial_number);
+        return make_cip_error(output, slice_at(input, 0) | CIP_DONE, CIP_ERR_UNSUPPORTED, false, 0);
+    }
+    if(plc->client_vendor_id != fc_req.client_vendor_id) {
+        /* FIXME - send back the right error. */
+        info("Forward close client vendor ID, %x, did not match the client vendor ID originally passed, %x!", fc_req.client_vendor_id, plc->client_vendor_id);
+        return make_cip_error(output, slice_at(input, 0) | CIP_DONE, CIP_ERR_UNSUPPORTED, false, 0);
+    }
+    if(plc->client_serial_number != fc_req.client_serial_number) {
+        /* FIXME - send back the right error. */
+        info("Forward close client serial number, %x, did not match the client serial number originally passed, %x!", fc_req.client_serial_number, plc->client_serial_number);
+        return make_cip_error(output, slice_at(input, 0) | CIP_DONE, CIP_ERR_UNSUPPORTED, false, 0);
+    }
+
+    /* now process the FClose and respond. */
+    offset = 0;
+    slice_at_put(output, offset, slice_at(input, 0) | CIP_DONE); offset++;
+    slice_at_put(output, offset, 0); offset++; /* padding/reserved. */
+    slice_at_put(output, offset, 0); offset++; /* no error. */
+    slice_at_put(output, offset, 0); offset++; /* no extra error fields. */
+
+    set_uint16_le(output, offset, plc->client_connection_serial_number); offset += 2;
+    set_uint16_le(output, offset, plc->client_vendor_id); offset += 2;
+    set_uint32_le(output, offset, plc->client_serial_number); offset += 4;
+
+    /* not sure what these do... */
+    slice_at_put(output, offset, 0); offset++;
+    slice_at_put(output, offset, 0); offset++;
+
+    return slice_from_slice(output, 0, offset);        
+}
+
+
+
+/* match a path.   This is tricky, thanks, Rockwell. */
+bool match_path(slice_s input, bool need_pad, uint8_t *path, uint8_t path_len)
+{
+    ssize_t input_len = slice_len(input);
+    ssize_t input_path_len = 0;
+    size_t path_start = 0;
+
+    info("Starting with request path:");
+    slice_dump(input);
+    info("and stored path:");
+    slice_dump(slice_make(path, (ssize_t)path_len));
+
+    if(input_len < path_len) {
+        info("path does not match lengths.   Input length %d, path length %d", input_len, path_len);
+        return false;
+    }
+
+    /* the first byte of the path input is the length byte in 16-bit words */
+    input_path_len = slice_at(input, 0);
+
+    /* check it against the passed path length */
+    if((input_path_len * 2) != path_len) {
+        info("path is wrong length.   Got %d but expected %d!", input_path_len*2, path_len);
+        return false;
+    }
+
+    /* where does the path start? */
+    if(need_pad) {
+        path_start = 2;
+    } else {
+        path_start = 1;
+    }
+
+    info("Comparing slice:");
+    slice_dump(slice_from_slice(input, path_start, slice_len(input)));
+    info("with slice:");
+    slice_dump(slice_make(path, (ssize_t)path_len));
+
+    return slice_match_bytes(slice_from_slice(input, path_start, slice_len(input)), path, path_len);
 }
 
 
