@@ -60,6 +60,7 @@ void tcp_server_start(tcp_server_p server)
     bool done = false;
 
     do {
+        info("Waiting for new client connection.");
         client_fd = socket_accept(server->sock_fd);
 
         if(client_fd >= 0) {
@@ -74,7 +75,7 @@ void tcp_server_start(tcp_server_p server)
                 tmp_input = socket_read(client_fd, tmp_input);
 
                 if((rc = slice_has_err(tmp_input))) {
-                    info("ERROR: error reading socket! error %d", rc);
+                    info("WARN: error response reading socket! error %d", rc);
                     rc = TCP_SERVER_DONE;
                     break;
                 }
