@@ -617,7 +617,7 @@ slice_s make_cip_error(slice_s output, uint8_t cip_cmd, uint8_t cip_err, bool ex
 
     slice_at_put(output, 0, cip_cmd | CIP_DONE); 
     slice_at_put(output, 1, 0); /* reserved, must be zero. */
-    slice_at_put(output, 2, CIP_ERR_UNSUPPORTED);
+    slice_at_put(output, 2, cip_err);
 
     if(extend) {
         slice_at_put(output, 3, 2); /* two bytes of extended status. */
