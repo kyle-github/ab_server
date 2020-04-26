@@ -62,12 +62,12 @@ slice_s eip_dispatch_request(slice_s input, slice_s raw_output, plc_s *plc)
     slice_dump(input);
 
     /* unpack header. */
-    header.command = get_uint16_le(input, 0);
-    header.length = get_uint16_le(input, 2);
-    header.session_handle = get_uint32_le(input, 4);
-    header.status = get_uint32_le(input, 8);
-    header.sender_context = get_uint64_le(input, 12);
-    header.options = get_uint32_le(input, 20);
+    header.command = slice_get_uint16_le(input, 0);
+    header.length = slice_get_uint16_le(input, 2);
+    header.session_handle = slice_get_uint32_le(input, 4);
+    header.status = slice_get_uint32_le(input, 8);
+    header.sender_context = slice_get_uint64_le(input, 12);
+    header.options = slice_get_uint32_le(input, 20);
 
     /* sanity checks */
     if(slice_len(input) != header.length + EIP_HEADER_SIZE) {
@@ -104,12 +104,12 @@ slice_s eip_dispatch_request(slice_s input, slice_s raw_output, plc_s *plc)
 
     if(!slice_has_err(response)) {
         /* build response */
-        set_uint16_le(output, 0, header.command);
-        set_uint16_le(output, 2, (uint16_t)slice_len(response));
-        set_uint32_le(output, 4, plc->session_handle);
-        set_uint32_le(output, 8, (uint32_t)0); /* status == 0 -> no error */
-        set_uint64_le(output, 12, plc->sender_context);
-        set_uint32_le(output, 20, header.options);
+        slice_set_uint16_le(output, 0, header.command);
+        slice_set_uint16_le(output, 2, (uint16_t)slice_len(response));
+        slice_set_uint32_le(output, 4, plc->session_handle);
+        slice_set_uint32_le(output, 8, (uint32_t)0); /* status == 0 -> no error */
+        slice_set_uin64_le(output, 12, plc->sender_context);
+        slice_set_uint32_le(output, 20, header.options);
 
         /* The payload is already in place. */
         return slice_from_slice(output, 0, EIP_HEADER_SIZE + slice_len(response));
@@ -120,12 +120,12 @@ slice_s eip_dispatch_request(slice_s input, slice_s raw_output, plc_s *plc)
         return response;
     } else {
         /* error condition. */
-        set_uint16_le(output, 0, header.command);
-        set_uint16_le(output, 2, (uint16_t)0);  /* no payload. */
-        set_uint32_le(output, 4, plc->session_handle);
-        set_uint32_le(output, 8, slice_get_err(response)); /* status */
-        set_uint64_le(output, 12, plc->sender_context);
-        set_uint32_le(output, 20, header.options);
+        slice_set_uint16_le(output, 0, header.command);
+        slice_set_uint16_le(output, 2, (uint16_t)0);  /* no payload. */
+        slice_set_uint32_le(output, 4, plc->session_handle);
+        slice_set_uint32_le(output, 8, slice_get_err(response)); /* status */
+        slice_set_uin64_le(output, 12, plc->sender_context);
+        slice_set_uint32_le(output, 20, header.options);
 
         return slice_from_slice(output, 0, EIP_HEADER_SIZE);
     }
@@ -139,8 +139,8 @@ slice_s register_session(slice_s input, slice_s output, plc_s *plc, eip_header_s
         uint16_t option_flags;
     } register_request;
 
-    register_request.eip_version = get_uint16_le(input, 0);
-    register_request.option_flags = get_uint16_le(input, 2);
+    register_request.eip_version = slice_get_uint16_le(input, 0);
+    register_request.option_flags = slice_get_uint16_le(input, 2);
     
     /* sanity checks.  The command and packet length are checked by now. */
 
@@ -190,8 +190,8 @@ slice_s register_session(slice_s input, slice_s output, plc_s *plc, eip_header_s
     plc->session_handle = header->session_handle = (uint32_t)rand();
     
     /* build the response. */
-    set_uint16_le(output, 0, register_request.eip_version);
-    set_uint16_le(output, 2, register_request.option_flags);
+    slice_set_uint16_le(output, 0, register_request.eip_version);
+    slice_set_uint16_le(output, 2, register_request.option_flags);
 
     return slice_from_slice(output, 0, EIP_REGISTER_SESSION_SIZE);
 }

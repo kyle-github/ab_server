@@ -319,7 +319,7 @@ slice_s request_handler(slice_s input, slice_s output, void *plc)
 {
     /* check to see if we have a full packet. */
     if(slice_len(input) >= EIP_HEADER_SIZE) {
-        uint16_t eip_len = get_uint16_le(input, 2);
+        uint16_t eip_len = slice_get_uint16_le(input, 2);
 
         if(slice_len(input) >= (EIP_HEADER_SIZE + eip_len)) {
             return eip_dispatch_request(input, output, (plc_s *)plc);

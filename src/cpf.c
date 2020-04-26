@@ -73,9 +73,9 @@ slice_s handle_cpf_unconnected(slice_s input, slice_s output, plc_s *plc)
     }
 
     /* unpack the request. */
-    header.interface_handle = get_uint32_le(input, 0);
-    header.router_timeout = get_uint16_le(input, 4);
-    header.item_count = get_uint16_le(input, 6);
+    header.interface_handle = slice_get_uint32_le(input, 0);
+    header.router_timeout = slice_get_uint16_le(input, 4);
+    header.item_count = slice_get_uint16_le(input, 6);
 
     /* sanity check the number of items. */
     if(header.item_count != (uint16_t)2) {
@@ -83,10 +83,10 @@ slice_s handle_cpf_unconnected(slice_s input, slice_s output, plc_s *plc)
         return slice_make_err(EIP_ERR_BAD_REQUEST);
     }
 
-    header.item_addr_type = get_uint16_le(input, 8);
-    header.item_addr_length = get_uint16_le(input, 10);
-    header.item_data_type = get_uint16_le(input, 12);
-    header.item_data_length = get_uint16_le(input, 14);
+    header.item_addr_type = slice_get_uint16_le(input, 8);
+    header.item_addr_length = slice_get_uint16_le(input, 10);
+    header.item_data_type = slice_get_uint16_le(input, 12);
+    header.item_data_length = slice_get_uint16_le(input, 14);
 
     /* sanity check the data. */
     if(header.item_addr_type != CPF_ITEM_NAI) {
@@ -116,13 +116,13 @@ slice_s handle_cpf_unconnected(slice_s input, slice_s output, plc_s *plc)
 
     if(!slice_has_err(result)) {
         /* build outbound header. */
-        set_uint32_le(output, 0, header.interface_handle);
-        set_uint16_le(output, 4, header.router_timeout);
-        set_uint16_le(output, 6, 2); /* two items. */
-        set_uint16_le(output, 8, CPF_ITEM_NAI); /* connected address type. */
-        set_uint16_le(output, 10, 0); /* No connection ID. */
-        set_uint16_le(output, 12, CPF_ITEM_UDI); /* connected data type */
-        set_uint16_le(output, 14, slice_len(result)); /* result from CIP processing downstream. */
+        slice_set_uint32_le(output, 0, header.interface_handle);
+        slice_set_uint16_le(output, 4, header.router_timeout);
+        slice_set_uint16_le(output, 6, 2); /* two items. */
+        slice_set_uint16_le(output, 8, CPF_ITEM_NAI); /* connected address type. */
+        slice_set_uint16_le(output, 10, 0); /* No connection ID. */
+        slice_set_uint16_le(output, 12, CPF_ITEM_UDI); /* connected data type */
+        slice_set_uint16_le(output, 14, slice_len(result)); /* result from CIP processing downstream. */
 
         /* create a new slice with the CPF header and the response packet in it. */
         result = slice_from_slice(output, 0, slice_len(result) + CPF_UCONN_HEADER_SIZE);
@@ -148,9 +148,9 @@ slice_s handle_cpf_connected(slice_s input, slice_s output, plc_s *plc)
     }
 
     /* unpack the request. */
-    header.interface_handle = get_uint32_le(input, 0);
-    header.router_timeout = get_uint16_le(input, 4);
-    header.item_count = get_uint16_le(input, 6);
+    header.interface_handle = slice_get_uint32_le(input, 0);
+    header.router_timeout = slice_get_uint16_le(input, 4);
+    header.item_count = slice_get_uint16_le(input, 6);
 
     /* sanity check the number of items. */
     if(header.item_count != (uint16_t)2) {
@@ -158,12 +158,12 @@ slice_s handle_cpf_connected(slice_s input, slice_s output, plc_s *plc)
         return slice_make_err(EIP_ERR_BAD_REQUEST);
     }
 
-    header.item_addr_type = get_uint16_le(input, 8);
-    header.item_addr_length = get_uint16_le(input, 10);
-    header.conn_id = get_uint32_le(input, 12);
-    header.item_data_type = get_uint16_le(input, 16);
-    header.item_data_length = get_uint16_le(input, 18);
-    header.conn_seq = get_uint16_le(input, 20);
+    header.item_addr_type = slice_get_uint16_le(input, 8);
+    header.item_addr_length = slice_get_uint16_le(input, 10);
+    header.conn_id = slice_get_uint32_le(input, 12);
+    header.item_data_type = slice_get_uint16_le(input, 16);
+    header.item_data_length = slice_get_uint16_le(input, 18);
+    header.conn_seq = slice_get_uint16_le(input, 20);
 
     /* sanity check the data. */
     if(header.item_addr_type != CPF_ITEM_CAI) {
@@ -201,13 +201,13 @@ slice_s handle_cpf_connected(slice_s input, slice_s output, plc_s *plc)
 
     if(!slice_has_err(result)) {
         /* build outbound header. */
-        set_uint16_le(output, 0, 2); /* two items. */
-        set_uint16_le(output, 2, CPF_ITEM_CAI); /* connected address type. */
-        set_uint16_le(output, 4, 4); /* connection ID is 4 bytes. */
-        set_uint32_le(output, 6, plc->client_connection_id);
-        set_uint16_le(output, 10, CPF_ITEM_CDI); /* connected data type */
-        set_uint16_le(output, 12, slice_len(result) + 2); /* result from CIP processing downstream.  Plus 2 bytes for sequence number. */
-        set_uint16_le(output, 14, plc->client_connection_seq);
+        slice_set_uint16_le(output, 0, 2); /* two items. */
+        slice_set_uint16_le(output, 2, CPF_ITEM_CAI); /* connected address type. */
+        slice_set_uint16_le(output, 4, 4); /* connection ID is 4 bytes. */
+        slice_set_uint32_le(output, 6, plc->client_connection_id);
+        slice_set_uint16_le(output, 10, CPF_ITEM_CDI); /* connected data type */
+        slice_set_uint16_le(output, 12, slice_len(result) + 2); /* result from CIP processing downstream.  Plus 2 bytes for sequence number. */
+        slice_set_uint16_le(output, 14, plc->client_connection_seq);
 
         /* create a new slice with the CPF header and the response packet in it. */
         result = slice_from_slice(output, 0, slice_len(result) + CPF_CONN_HEADER_SIZE);
