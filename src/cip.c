@@ -31,10 +31,10 @@
 /* tag commands */
 const uint8_t CIP_MULTI[] = { 0x0A, 0x02, 0x20, 0x02, 0x24, 0x01 }; 
 const uint8_t CIP_READ[] = { 0x4C };
-const uint8_t CIP_WRITE[] = { 0x4D, 0x02, 0x20, 0x02, 0x24, 0x01 };
+const uint8_t CIP_WRITE[] = { 0x4D };
 const uint8_t CIP_RMW[] = { 0x4E, 0x02, 0x20, 0x02, 0x24, 0x01 };
 const uint8_t CIP_READ_FRAG[] = { 0x52 };
-const uint8_t CIP_WRITE_FRAG[] = { 0x53, 0x02, 0x20, 0x02, 0x24, 0x01 };
+const uint8_t CIP_WRITE_FRAG[] = { 0x53 };
 
 
 /* non-tag commands */
@@ -70,6 +70,8 @@ typedef struct {
 static slice_s handle_forward_open(slice_s input, slice_s output, plc_s *plc);
 static slice_s handle_forward_close(slice_s input, slice_s output, plc_s *plc);
 static slice_s handle_read_request(slice_s input, slice_s output, plc_s *plc);
+static slice_s handle_write_request(slice_s input, slice_s output, plc_s *plc);
+
 static bool process_tag_segment(plc_s *plc, slice_s input, tag_def_s **tag, size_t *start_read_offset);
 static slice_s make_cip_error(slice_s output, uint8_t cip_cmd, uint8_t cip_err, bool extend, uint16_t extended_error);
 static bool match_path(slice_s input, bool need_pad, uint8_t *path, uint8_t path_len);
@@ -86,6 +88,10 @@ slice_s cip_dispatch_request(slice_s input, slice_s output, plc_s *plc)
         return handle_read_request(input, output, plc);
     } else if(slice_match_bytes(input, CIP_READ_FRAG, sizeof(CIP_READ_FRAG))) {
         return handle_read_request(input, output, plc);
+    } else if(slice_match_bytes(input, CIP_WRITE, sizeof(CIP_WRITE))) {
+        return handle_write_request(input, output, plc);
+    } else if(slice_match_bytes(input, CIP_WRITE_FRAG, sizeof(CIP_WRITE_FRAG))) {
+        return handle_write_request(input, output, plc);
     } else if(slice_match_bytes(input, CIP_FORWARD_OPEN, sizeof(CIP_FORWARD_OPEN))) {
         return handle_forward_open(input, output, plc);
     } else if(slice_match_bytes(input, CIP_FORWARD_OPEN_EX, sizeof(CIP_FORWARD_OPEN_EX))) {
@@ -444,6 +450,112 @@ slice_s handle_read_request(slice_s input, slice_s output, plc_s *plc)
 
     return slice_from_slice(output, 0, offset);
 }
+
+
+
+
+#define CIP_WRITE_MIN_SIZE (6)
+#define CIP_WRITE_FRAG_MIN_SIZE (10)
+
+slice_s handle_write_request(slice_s input, slice_s output, plc_s *plc)
+{
+    uint8_t write_cmd = slice_get_uint8(input, 0);  /*get the type. */
+    uint8_t tag_segment_size = 0;
+    uint8_t symbolic_marker = 0;
+    uint8_t tag_name_size = 0;
+    uint16_t element_count = 0;
+    uint32_t byte_offset = 0;
+    size_t write_start_offset = 0;
+    size_t offset = 0;
+    tag_def_s *tag = NULL;
+    size_t tag_data_length = 0;
+    size_t total_request_size = 0;
+    size_t remaining_size = 0;
+    size_t packet_capacity = 0;
+    bool need_frag = false;
+    size_t amount_to_copy = 0;
+    uint16_t write_data_type = 0;
+    uint16_t write_element_count = 0;
+
+    if(slice_len(input) < (write_cmd == CIP_WRITE[0] ? CIP_WRITE_MIN_SIZE : CIP_WRITE_FRAG_MIN_SIZE)) {
+        info("Insufficient data in the CIP write request!");
+        return make_cip_error(output, write_cmd | CIP_DONE, CIP_ERR_UNSUPPORTED, false, 0);
+    }
+
+    offset = 1;
+    tag_segment_size = slice_get_uint8(input, offset); offset++;
+
+    /* check that we have enough space. */
+    if((slice_len(input) + (write_cmd == CIP_WRITE[0] ? 2 : 6) - 2) < (tag_segment_size * 2)) {
+        info("Request does not have enough space for element count and byte offset!");
+        return make_cip_error(output, write_cmd | CIP_DONE, CIP_ERR_UNSUPPORTED, false, 0);
+    }
+
+    if(!process_tag_segment(plc, slice_from_slice(input, offset, tag_segment_size * 2), &tag, &write_start_offset)) {
+        return make_cip_error(output, write_cmd | CIP_DONE, CIP_ERR_UNSUPPORTED, false, 0);
+    }
+
+    /* step past the tag segment. */
+    offset += (tag_segment_size * 2);
+
+    /* get the tag data type and compare. */
+    write_data_type = slice_get_uint16_le(input, offset); offset += 2;
+
+    /* check that the data types match. */
+    if(tag->tag_type != write_data_type) {
+        info("tag data type %02x does not match the data type in the write request %02x", tag->tag_type, write_data_type);
+        return make_cip_error(output, write_cmd | CIP_DONE, CIP_ERR_UNSUPPORTED, false, 0);
+    }
+
+    /* get the number of elements to write. */
+    write_element_count = slice_get_uint16_le(input, offset); offset += 2;
+
+    /* check the number of elements */
+    if(write_element_count > tag->elem_count) {
+        info("request tries to write too many elements!");
+        return make_cip_error(output, write_cmd | CIP_DONE, CIP_ERR_EXTENDED, true, CIP_ERR_EX_TOO_LONG);
+    }
+
+    if(write_cmd == CIP_WRITE_FRAG[0]) {
+        byte_offset = slice_get_uint32_le(input, offset); offset += 4;
+    }
+
+    info("byte_offset = %d", byte_offset);
+
+    /* check the offset bounds. */
+    tag_data_length = tag->elem_count * tag->elem_size;
+
+    info("tag_data_length = %d", tag_data_length);
+
+    /* get the write amount requested. */
+    total_request_size = slice_len(input) - offset;
+
+    info("total_request_size = %d", total_request_size);
+
+    /* check the amount */
+    if(byte_offset + total_request_size > tag_data_length) {
+        info("request tries to write too much data!");
+        return make_cip_error(output, write_cmd | CIP_DONE, CIP_ERR_EXTENDED, true, CIP_ERR_EX_TOO_LONG);
+    }
+
+    /* copy the data. */
+    info("byte_offset = %d", byte_offset);
+    info("offset = %d", offset);
+    info("total_request_size = %d", total_request_size);
+    memcpy(&tag->data[byte_offset], slice_get_bytes(input, offset), total_request_size);
+
+    /* start making the response. */
+    offset = 0;
+    slice_set_uint8(output, offset, write_cmd | CIP_DONE); offset++;
+    slice_set_uint8(output, offset, 0); offset++; /* padding/reserved. */
+    slice_set_uint8(output, offset, (need_frag ? CIP_ERR_FRAG : CIP_OK)); offset++; /* no error. */
+    slice_set_uint8(output, offset, 0); offset++; /* no extra error fields. */
+
+    return slice_from_slice(output, 0, offset);
+}
+
+
+
 
 
 /*
