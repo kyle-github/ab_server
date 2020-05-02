@@ -39,6 +39,7 @@ inline static ssize_t slice_len(slice_s s) { return s.len; }
 inline static bool slice_in_bounds(slice_s s, size_t index) { if(index < (size_t)s.len) { return true; } else { return false; } }
 inline static uint16_t slice_get_uint8(slice_s s, size_t index) { if(slice_in_bounds(s, index)) { return s.data[index]; } else { return UINT16_MAX; } }
 inline static bool slice_set_uint8(slice_s s, size_t index, uint8_t val) { if(slice_in_bounds(s, index)) { s.data[index] = val; return true; } else { return false; } }
+inline static uint8_t *slice_get_bytes(slice_s s, size_t index) {  if(slice_in_bounds(s, index)) { return &s.data[index];} else { return NULL;} }
 inline static bool slice_has_err(slice_s s) { if(s.data == NULL) { return true; } else { return false; } }
 inline static int slice_get_err(slice_s s) { return slice_len(s); }
 inline static bool slice_match_bytes(slice_s s, const uint8_t *data, size_t data_len) { 
