@@ -402,7 +402,7 @@ slice_s handle_read_request(slice_s input, slice_s output, plc_s *plc)
 
     /* do we need to fragment the result? */
     remaining_size = total_request_size - byte_offset;
-    packet_capacity = slice_len(output) - 4; /* MAGIC - CIP header is 4 bytes. */
+    packet_capacity = slice_len(output) - 6; /* MAGIC - CIP header plus data type bytes is 6 bytes. */
 
     info("packet_capacity = %d", packet_capacity);
 
@@ -432,6 +432,8 @@ slice_s handle_read_request(slice_s input, slice_s output, plc_s *plc)
     }
 
     info("amount_to_copy = %d", amount_to_copy);
+    info("copy start location = %d", offset);
+    info("output space = %d", slice_len(output) - offset);
 
     /* FIXME - use memcpy */
     for(size_t i=0; i < amount_to_copy; i++) {
